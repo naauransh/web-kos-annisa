@@ -1,3 +1,19 @@
+Claude
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Script· JS
 const track = document.getElementById('track'),
     cv = document.getElementById('cv'),
     ctx = cv.getContext('2d'),
@@ -58,11 +74,14 @@ function draw(p) {
     }
 }
 let frames = [],
-    lastP = -1;
+    lastP = -1,
+    loaded = 0,
+    scrub = false;
 async function initVideo() {
     const ld = document.getElementById('ld'),
         lt = document.getElementById('ldt');
-    const mobile = innerWidth < 700;
+    const mobile = innerWidth < 700,
+        FIRST = 20;
     const names = ['assets/vid-kos.mp4', 'assets/vid-kos.MOV'];
     const waitFor = (ev, ms) => new Promise(r => {
         let d;
@@ -86,34 +105,51 @@ async function initVideo() {
             ok = false;
         }
         if (!ok) throw 0;
-        const N = mobile ? 100 : 150,
-            sc = Math.min(1, (mobile ? 640 : 800) / Math.max(vd.videoWidth, vd.videoHeight)),
-            out = [];
+        const low = navigator.deviceMemory && navigator.deviceMemory <= 3,
+            N = low ? 60 : mobile ? 100 : 150,
+            sc = Math.min(1, (low ? 480 : mobile ? 640 : 800) / Math.max(vd.videoWidth, vd.videoHeight));
+        const buf = new Array(N);
         let fails = 0;
         for (let i = 0; i < N; i++) {
             vd.currentTime = Math.max(.01, Math.min(vd.duration - .01, i / (N - 1) * vd.duration));
             if (await waitFor('onseeked', 4000)) {
                 try {
-                    out.push(await createImageBitmap(vd, {
-                        resizeWidth: Math.round(vd.videoWidth * sc),
-                        resizeHeight: Math.round(vd.videoHeight * sc)
-                    }))
+                    const c = document.createElement('canvas');
+                    c.width = Math.round(vd.videoWidth * sc);
+                    c.height = Math.round(vd.videoHeight * sc);
+                    c.getContext('2d').drawImage(vd, 0, 0, c.width, c.height);
+                    buf[i] = c;
+                    frames = buf;
+                    loaded++;
+                    lastP = -1;
                 } catch (e) {
                     fails++
                 }
             } else fails++;
             if (fails > 5) throw 0;
-            lt.textContent = 'Memuat ' + Math.round((i + 1) / N * 100) + '%';
+            if (loaded <= FIRST) lt.textContent = 'Memuat ' + Math.round(Math.min(loaded, FIRST) / FIRST * 100) + '%';
+            if (loaded === FIRST) ld.classList.add('done');
         }
-        if (out.length < 20) throw 0;
-        frames = out;
-        lastP = -1;
-    } catch (e) {}
+    } catch (e) {
+        if (loaded < 10) {
+            loaded = 0;
+            frames = [];
+            if (vd.videoWidth) scrub = true
+        }
+    }
+    if (scrub) {
+        vd.style.display = 'block';
+        cv.style.display = 'none'
+    }
     ld.classList.add('done');
 }
 
 function drawFrame(p) {
-    const im = frames[Math.round(p * (frames.length - 1))];
+    const n = frames.length,
+        k = Math.round(p * (n - 1));
+    let im = frames[k];
+    for (let d = 1; !im && d < n; d++) im = frames[k - d] || frames[k + d];
+    if (!im) return;
     ctx.globalAlpha = 1;
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, W, H); {
@@ -136,9 +172,12 @@ onScroll();
 function loop() {
     cur += (target - cur) * .12;
     if (Math.abs(target - cur) < .0003) cur = target;
-    if (cur !== lastP) {
+    if (scrub) {
+        const t = cur * vd.duration;
+        if (!vd.seeking && Math.abs(vd.currentTime - t) > .05) vd.currentTime = t
+    } else if (cur !== lastP) {
         lastP = cur;
-        frames.length ? drawFrame(cur) : draw(cur)
+        loaded ? drawFrame(cur) : draw(cur)
     }
     bar.style.width = cur * 100 + '%';
     document.getElementById('hint').style.opacity = cur < .03 ? 1 : 0;
@@ -171,3 +210,5 @@ const io = new IntersectionObserver(es => es.forEach(e => {
     threshold: .15
 });
 document.querySelectorAll('.rv').forEach(el => io.observe(el));
+
+Claude selesai menulis balasan
