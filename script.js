@@ -1,19 +1,3 @@
-Claude
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Script· JS
 const track = document.getElementById('track'),
     cv = document.getElementById('cv'),
     ctx = cv.getContext('2d'),
@@ -210,5 +194,3 @@ const io = new IntersectionObserver(es => es.forEach(e => {
     threshold: .15
 });
 document.querySelectorAll('.rv').forEach(el => io.observe(el));
-
-Claude selesai menulis balasan
