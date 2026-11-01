@@ -64,31 +64,48 @@ async function initVideo() {
         lt = document.getElementById('ldt');
     const mobile = innerWidth < 700;
     const names = ['assets/vid-kos.mp4', 'assets/vid-kos.MOV'];
+    const waitFor = (ev, ms) => new Promise(r => {
+        let d;
+        const f = v => {
+            if (!d) {
+                d = 1;
+                r(v)
+            }
+        };
+        vd[ev] = () => f(true);
+        vd.onerror = () => f(false);
+        setTimeout(() => f(false), ms)
+    });
     try {
         let ok = false;
         for (const n of names) {
             vd.src = n;
-            ok = await new Promise(r => {
-                vd.onloadedmetadata = () => r(true);
-                vd.onerror = () => r(false)
-            });
-            if (ok) break;
+            vd.load();
+            ok = await waitFor('onloadedmetadata', 12000);
+            if (ok && vd.videoWidth) break;
+            ok = false;
         }
         if (!ok) throw 0;
         const N = mobile ? 100 : 150,
             sc = Math.min(1, (mobile ? 640 : 800) / Math.max(vd.videoWidth, vd.videoHeight)),
             out = [];
+        let fails = 0;
         for (let i = 0; i < N; i++) {
             vd.currentTime = Math.max(.01, Math.min(vd.duration - .01, i / (N - 1) * vd.duration));
-            await new Promise(r => {
-                vd.onseeked = r
-            });
-            out.push(await createImageBitmap(vd, {
-                resizeWidth: Math.round(vd.videoWidth * sc),
-                resizeHeight: Math.round(vd.videoHeight * sc)
-            }));
+            if (await waitFor('onseeked', 4000)) {
+                try {
+                    out.push(await createImageBitmap(vd, {
+                        resizeWidth: Math.round(vd.videoWidth * sc),
+                        resizeHeight: Math.round(vd.videoHeight * sc)
+                    }))
+                } catch (e) {
+                    fails++
+                }
+            } else fails++;
+            if (fails > 5) throw 0;
             lt.textContent = 'Memuat ' + Math.round((i + 1) / N * 100) + '%';
         }
+        if (out.length < 20) throw 0;
         frames = out;
         lastP = -1;
     } catch (e) {}
