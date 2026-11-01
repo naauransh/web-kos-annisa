@@ -399,3 +399,20 @@ footer {
     opacity: 1;
     transform: none
 }
+
+/* Foto pilihan kamar */
+.room-img {
+    display: block;
+    width: 100%;
+    height: 210px;
+    object-fit: cover;
+    border-radius: 12px;
+    margin-bottom: 1.2rem;
+}
+
+/* Tampilan foto di HP */
+@media (max-width: 600px) {
+    .room-img {
+        height: 190px;
+    }
+}
